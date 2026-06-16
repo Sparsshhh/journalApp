@@ -6,17 +6,16 @@ import net.engineeringdigest.journalApp.service.UserDetailsServiceImpl;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.security.core.userdetails.User;
+import org.mockito.ArgumentMatchers;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.test.context.ActiveProfiles;
 
-import static org.mockito.Mockito.*;
+import java.util.Arrays;
 
-@ActiveProfiles("dev")
+import static org.mockito.Mockito.when;
+
 public class UserDetailsServiceImplTest {
 
     @InjectMocks
@@ -24,15 +23,27 @@ public class UserDetailsServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
     @BeforeEach
-    void setup(){
-         MockitoAnnotations.initMocks(this);
+    void setup() {
+        MockitoAnnotations.initMocks(this);
     }
+
     @Test
-    void loadUsernameTest(){
-        when(userRepository.findByUserName(ArgumentMatchers.anyString())).thenReturn((user) User.builder().username("Sparsh").password("Sparsh").build());
-        UserDetails user = userDetailsService.loadUserByUsername("Sparsh");
-        Assertions.assertEquals("Sparsh",user.getUsername());
+    void loadUsernameTest() {
+
+        // Create your own user entity
+        user myUser = new user("Sparsh", "Sparsh");
+        myUser.setRoles(Arrays.asList("USER"));
+
+        // Mock repository response
+        when(userRepository.findByUserName(ArgumentMatchers.anyString()))
+                .thenReturn(myUser);
+
+        // Call service method
+        UserDetails userDetails = userDetailsService.loadUserByUsername("Sparsh");
+
+        // Verify result
+        Assertions.assertEquals("Sparsh", userDetails.getUsername());
     }
 }
-
