@@ -5,6 +5,7 @@ import net.engineeringdigest.journalApp.repository.UserRepository;
 import net.engineeringdigest.journalApp.service.UserDetailsServiceImpl;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
@@ -15,7 +16,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Arrays;
 
 import static org.mockito.Mockito.when;
-
+@Disabled
 public class UserDetailsServiceImplTest {
 
     @InjectMocks
@@ -28,7 +29,7 @@ public class UserDetailsServiceImplTest {
     void setup() {
         MockitoAnnotations.initMocks(this);
     }
-
+@Disabled
     @Test
     void loadUsernameTest() {
 

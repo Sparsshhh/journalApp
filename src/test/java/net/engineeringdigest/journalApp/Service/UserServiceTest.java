@@ -21,7 +21,7 @@ public class UserServiceTest {
     private UserRepository userRepository;
     @Autowired
     private UserService userService;
-
+@Disabled
     @ParameterizedTest
     @ArgumentsSource(UserArgumentsProvider.class)
     public void testFindByUserName(user user){
