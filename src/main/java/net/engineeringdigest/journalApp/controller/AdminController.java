@@ -1,10 +1,10 @@
 package net.engineeringdigest.journalApp.controller;
 
-import net.engineeringdigest.journalApp.entity.user;
+import jakarta.validation.Valid;
+import net.engineeringdigest.journalApp.dto.UserRequest;
+import net.engineeringdigest.journalApp.dto.UserResponse;
 import net.engineeringdigest.journalApp.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,20 +12,21 @@ import java.util.List;
 @RestController
 @RequestMapping("/admin")
 public class AdminController {
-    @Autowired
-    UserService userService;
+
+    private final UserService userService;
+
+    public AdminController(UserService userService) {
+        this.userService = userService;
+    }
 
     @GetMapping("/allUsers")
-    public ResponseEntity<?> getAllUsers(){
-        List<user> all = userService.getAll();
-        if(all != null && !all.isEmpty()){
-            return new ResponseEntity<>(all, HttpStatus.OK);
-        }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    public List<UserResponse> getAllUsers(){
+        return userService.getAll().stream().map(UserResponse::from).toList();
     }
 
     @PostMapping("/create-admin-users")
-    public void createUser(@RequestBody user user){
-        userService.saveAdmin(user);
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserResponse createUser(@Valid @RequestBody UserRequest request){
+        return UserResponse.from(userService.register(request.getUserName(), request.getPassword(), UserService.ADMIN_ROLES));
     }
 }

@@ -1,6 +1,6 @@
 package net.engineeringdigest.journalApp.service;
 
-import net.engineeringdigest.journalApp.entity.user;
+import net.engineeringdigest.journalApp.entity.User;
 import net.engineeringdigest.journalApp.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -8,6 +8,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
+// Requests are authenticated by JwtFilter, not through this class. It stays registered so that
+// Spring Security uses the real user store instead of creating a default in-memory user.
 @Component
 public class UserDetailsServiceImpl implements UserDetailsService {
     @Autowired
@@ -15,7 +17,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        user user = userRepository.findByUserName(username);
+        User user = userRepository.findByUserName(username);
         if(user!=null){
             return org.springframework.security.core.userdetails.User.builder()
                     .username(user.getUserName())

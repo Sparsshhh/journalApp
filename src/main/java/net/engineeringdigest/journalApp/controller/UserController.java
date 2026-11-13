@@ -1,49 +1,48 @@
 package net.engineeringdigest.journalApp.controller;
 
-import net.engineeringdigest.journalApp.repository.UserRepository;
+import jakarta.validation.Valid;
+import net.engineeringdigest.journalApp.dto.UserResponse;
+import net.engineeringdigest.journalApp.dto.UserUpdateRequest;
+import net.engineeringdigest.journalApp.entity.User;
 import net.engineeringdigest.journalApp.service.UserService;
-import net.engineeringdigest.journalApp.entity.user;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+// Everything here acts on the logged-in user only.
 @RestController
 @RequestMapping("/user")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
-    @Autowired
-    private UserRepository userRepository;
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
-    // Returns only the logged-in user. Listing every user is admin-only (/admin/allUsers).
     @GetMapping
-    public ResponseEntity<?> getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        user userInDb = userService.findByUserName(authentication.getName());
-        if (userInDb != null) {
-            return new ResponseEntity<>(userInDb, HttpStatus.OK);
-        }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    public UserResponse getCurrentUser(@AuthenticationPrincipal User user) {
+        return UserResponse.from(user);
     }
 
-    @PutMapping("/{userName}")
-    public ResponseEntity<?> updateUser(@RequestBody user user){
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userName = authentication.getName();
-        userService.updateCredentials(userName, user.getUserName(), user.getPassword());
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    // "/user/{userName}" is the original route and still works; the name in the path is ignored.
+    @PutMapping({"", "/{userName}"})
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateUser(@AuthenticationPrincipal User user, @Valid @RequestBody UserUpdateRequest request){
+        userService.updateCredentials(user, request.getUserName(), request.getPassword());
     }
 
+    // Signs the user out everywhere: all access and refresh tokens stop working.
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout(@AuthenticationPrincipal User user){
+        userService.logout(user);
+    }
+
+    // Deletes the account together with its journal entries.
     @DeleteMapping
-    public ResponseEntity<?> deleteUser(){
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        userRepository.deleteByUserName(authentication.getName());
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteUser(@AuthenticationPrincipal User user){
+        userService.deleteAccount(user);
     }
 }
