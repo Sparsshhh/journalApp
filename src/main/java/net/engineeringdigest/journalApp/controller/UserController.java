@@ -10,8 +10,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/user")
 public class UserController {
@@ -22,11 +20,13 @@ public class UserController {
     @Autowired
     private UserRepository userRepository;
 
+    // Returns only the logged-in user. Listing every user is admin-only (/admin/allUsers).
     @GetMapping
-    public ResponseEntity<?> getAllUsers() {
-        List<user> all = userService.getAll();
-        if (all != null && !all.isEmpty()) {
-            return new ResponseEntity<>(all, HttpStatus.OK);
+    public ResponseEntity<?> getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        user userInDb = userService.findByUserName(authentication.getName());
+        if (userInDb != null) {
+            return new ResponseEntity<>(userInDb, HttpStatus.OK);
         }
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
@@ -35,10 +35,7 @@ public class UserController {
     public ResponseEntity<?> updateUser(@RequestBody user user){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
-        user userInDb = userService.findByUserName(userName);
-        userInDb.setUserName(user.getUserName());
-        userInDb.setPassword(user.getPassword());
-        userService.saveNewUser(userInDb);
+        userService.updateCredentials(userName, user.getUserName(), user.getPassword());
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 

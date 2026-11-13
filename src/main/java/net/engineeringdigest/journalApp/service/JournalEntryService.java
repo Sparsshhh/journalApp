@@ -31,6 +31,7 @@ public class JournalEntryService {
     public void saveEntry(JournalEntry journalEntry, String userName){
         try{
             user user = userService.findByUserName(userName);
+            journalEntry.setId(null); // always create; a client-supplied id would overwrite someone else's entry
             journalEntry.setDate(LocalDateTime.now());
             JournalEntry saved = journalEntryRepository.save(journalEntry);
             user.getJournalEntries().add(saved);//in memory so call again

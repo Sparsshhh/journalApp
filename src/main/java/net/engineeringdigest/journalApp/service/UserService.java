@@ -24,22 +24,34 @@ public class UserService {
 
 
     public boolean saveNewEntry(user user) {
-        try {
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
-            user.setRoles(Arrays.asList("USER"));
-            userRepository.save(user);
-            return true;
-
-        } catch (Exception e) {
-            throw e;
-        }
+        userRepository.save(newUserFrom(user, Arrays.asList("USER")));
+        return true;
     }
 
 
     public void saveAdmin(user user) {
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setRoles(Arrays.asList("USER", "ADMIN"));
-        userRepository.save(user);
+        userRepository.save(newUserFrom(user, Arrays.asList("USER", "ADMIN")));
+    }
+
+    // Copies only userName and password from the request body. A client-supplied id would
+    // overwrite an existing account, and client-supplied journalEntries would expose other
+    // users' entries, so neither is carried over.
+    private user newUserFrom(user request, List<String> roles) {
+        user created = new user(request.getUserName(), passwordEncoder.encode(request.getPassword()));
+        created.setRoles(roles);
+        return created;
+    }
+
+    // Changes the logged-in user's name and/or password; blank values keep the current one.
+    public void updateCredentials(String currentUserName, String newUserName, String newPassword) {
+        user userInDb = userRepository.findByUserName(currentUserName);
+        if (newUserName != null && !newUserName.trim().isEmpty()) {
+            userInDb.setUserName(newUserName);
+        }
+        if (newPassword != null && !newPassword.isEmpty()) {
+            userInDb.setPassword(passwordEncoder.encode(newPassword));
+        }
+        userRepository.save(userInDb);
     }
 
 

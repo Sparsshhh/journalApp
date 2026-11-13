@@ -1,5 +1,6 @@
 package net.engineeringdigest.journalApp.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class user {
     @NonNull
     private String userName;
     @NonNull
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) // accepted in requests, never sent in responses
     private String password;
     @DBRef
     private List<JournalEntry> journalEntries = new ArrayList<>();
