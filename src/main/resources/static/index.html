@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Journal</title>
+<style>
+  :root { --bg:#f6f4ef; --card:#fff; --ink:#22201c; --muted:#6f6a61; --line:#e2ddd3; --accent:#3d5a80; --danger:#a23b3b; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#191817; --card:#242321; --ink:#ece8e1; --muted:#a39d92; --line:#3a3835; --accent:#98b4d4; --danger:#e08a8a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui, sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:1.6rem; margin:0; }
+  header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
+  label { display:block; font-size:.85rem; color:var(--muted); margin:10px 0 4px; }
+  input, textarea { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink); font:inherit; }
+  textarea { min-height:110px; resize:vertical; }
+  button { padding:8px 14px; border:1px solid var(--accent); border-radius:6px; background:var(--accent); color:var(--card); font:inherit; cursor:pointer; }
+  button.plain { background:transparent; color:var(--accent); }
+  button.danger { background:transparent; border-color:var(--danger); color:var(--danger); }
+  button:disabled { opacity:.5; cursor:default; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+  .row input { flex:1 1 140px; }
+  .muted { color:var(--muted); font-size:.85rem; }
+  .error { color:var(--danger); min-height:1.4em; margin:8px 0 0; font-size:.9rem; }
+  .entry h3 { margin:0 0 2px; font-size:1.1rem; overflow-wrap:anywhere; }
+  .entry p { margin:8px 0; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .tag { display:inline-block; border:1px solid var(--line); border-radius:999px; padding:1px 9px; font-size:.8rem; margin-right:4px; color:var(--muted); }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Journal</h1>
+    <div id="session" hidden>
+      <span class="muted" id="who"></span>
+      <button class="plain" id="logout">Log out</button>
+    </div>
+  </header>
+
+  <section id="auth" class="card">
+    <form id="auth-form">
+      <label for="userName">Username</label>
+      <input id="userName" autocomplete="username" required>
+      <label for="password">Password (at least 8 characters)</label>
+      <input id="password" type="password" autocomplete="current-password" required>
+      <div class="row">
+        <button type="submit" id="login">Log in</button>
+        <button type="button" class="plain" id="signup">Create account</button>
+      </div>
+      <p class="error" id="auth-error" role="alert"></p>
+    </form>
+  </section>
+
+  <div id="app" hidden>
+    <section class="card">
+      <form id="entry-form">
+        <label for="title">Title</label>
+        <input id="title" maxlength="200" required>
+        <label for="content">Entry</label>
+        <textarea id="content" maxlength="50000"></textarea>
+        <label for="tags">Tags (comma separated)</label>
+        <input id="tags" placeholder="work, ideas">
+        <div class="row"><button type="submit">Save entry</button></div>
+        <p class="error" id="entry-error" role="alert"></p>
+      </form>
+    </section>
+
+    <form id="search-form" class="row" style="margin:0 0 16px">
+      <input id="q" placeholder="Search text" aria-label="Search text">
+      <input id="tag" placeholder="Tag" aria-label="Tag">
+      <button type="submit" class="plain">Search</button>
+    </form>
+
+    <div id="entries"></div>
+    <div class="row" style="justify-content:space-between">
+      <button class="plain" id="prev">Newer</button>
+      <span class="muted" id="page-info"></span>
+      <button class="plain" id="next">Older</button>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const PAGE_SIZE = 10;
+  let page = 0;
+  // Tokens live in sessionStorage: they survive a reload but not closing the tab.
+  let tokens = null;
+  try { tokens = JSON.parse(sessionStorage.getItem('journal.tokens')); } catch (e) { /* storage unavailable */ }
+
+  function setTokens(next) {
+    tokens = next;
+    try {
+      if (next) sessionStorage.setItem('journal.tokens', JSON.stringify(next));
+      else sessionStorage.removeItem('journal.tokens');
+    } catch (e) { /* storage unavailable */ }
+  }
+
+  async function errorText(response) {
+    try {
+      const body = await response.json();
+      if (body.errors) return Object.values(body.errors).join('. ');
+      return body.detail || body.title || ('Request failed (' + response.status + ')');
+    } catch (e) {
+      return 'Request failed (' + response.status + ')';
+    }
+  }
+
+  function send(path, method, body, auth) {
+    const headers = {};
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    if (auth && tokens) headers['Authorization'] = 'Bearer ' + tokens.token;
+    return fetch(path, { method: method || 'GET', headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  }
+
+  // Authenticated call. If the access token has expired, trades the refresh token for a new pair once and retries.
+  async function api(path, method, body) {
+    let response = await send(path, method, body, true);
+    if (response.status === 401 && tokens && tokens.refreshToken) {
+      const refreshed = await send('/public/refresh', 'POST', { refreshToken: tokens.refreshToken });
+      if (refreshed.ok) {
+        setTokens(await refreshed.json());
+        response = await send(path, method, body, true);
+      }
+    }
+    if (response.status === 401) {
+      setTokens(null);
+      showAuth('Your session has ended. Please log in again.');
+      throw new Error('signed out');
+    }
+    return response;
+  }
+
+  function showAuth(message) {
+    $('auth').hidden = false;
+    $('app').hidden = true;
+    $('session').hidden = true;
+    $('auth-error').textContent = message || '';
+  }
+
+  async function showApp() {
+    const me = await api('/user');
+    if (!me.ok) return;
+    $('who').textContent = (await me.json()).userName;
+    $('auth').hidden = true;
+    $('app').hidden = false;
+    $('session').hidden = false;
+    page = 0;
+    await loadEntries();
+  }
+
+  async function loadEntries() {
+    const params = new URLSearchParams({ page: page, size: PAGE_SIZE });
+    if ($('q').value.trim()) params.set('q', $('q').value.trim());
+    if ($('tag').value.trim()) params.set('tag', $('tag').value.trim());
+    const response = await api('/journal?' + params);
+    if (!response.ok) return;
+    const data = await response.json();
+
+    const list = $('entries');
+    list.replaceChildren();
+    if (data.content.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'muted';
+      empty.textContent = data.totalElements === 0 ? 'No entries yet.' : 'No entries on this page.';
+      list.append(empty);
+    }
+    // Entry text is only ever inserted with textContent, never as HTML.
+    for (const entry of data.content) {
+      const card = document.createElement('article');
+      card.className = 'card entry';
+      const title = document.createElement('h3');
+      title.textContent = entry.title;
+      const when = document.createElement('div');
+      when.className = 'muted';
+      when.textContent = new Date(entry.date).toLocaleString();
+      card.append(title, when);
+      if (entry.content) {
+        const text = document.createElement('p');
+        text.textContent = entry.content;
+        card.append(text);
+      }
+      const footer = document.createElement('div');
+      footer.className = 'row';
+      footer.style.justifyContent = 'space-between';
+      const tags = document.createElement('div');
+      for (const tag of entry.tags) {
+        const chip = document.createElement('span');
+        chip.className = 'tag';
+        chip.textContent = tag;
+        tags.append(chip);
+      }
+      const remove = document.createElement('button');
+      remove.className = 'danger';
+      remove.textContent = 'Delete';
+      remove.addEventListener('click', async () => {
+        if (!confirm('Delete "' + entry.title + '"? This cannot be undone.')) return;
+        await api('/journal/id/' + entry.id, 'DELETE');
+        await loadEntries();
+      });
+      footer.append(tags, remove);
+      card.append(footer);
+      list.append(card);
+    }
+    $('page-info').textContent = data.totalElements + (data.totalElements === 1 ? ' entry' : ' entries')
+        + (data.totalPages > 1 ? ' · page ' + (data.page + 1) + ' of ' + data.totalPages : '');
+    $('prev').disabled = data.page <= 0;
+    $('next').disabled = data.page + 1 >= data.totalPages;
+  }
+
+  async function logIn() {
+    const response = await send('/public/login', 'POST', { userName: $('userName').value.trim(), password: $('password').value });
+    if (!response.ok) { $('auth-error').textContent = await errorText(response); return; }
+    setTokens(await response.json());
+    $('password').value = '';
+    await showApp();
+  }
+
+  $('auth-form').addEventListener('submit', (event) => { event.preventDefault(); logIn(); });
+
+  $('signup').addEventListener('click', async () => {
+    if (!$('auth-form').reportValidity()) return;
+    const response = await send('/public/createUser', 'POST', { userName: $('userName').value.trim(), password: $('password').value });
+    if (!response.ok) { $('auth-error').textContent = await errorText(response); return; }
+    await logIn();
+  });
+
+  $('logout').addEventListener('click', async () => {
+    try { await api('/user/logout', 'POST'); } catch (e) { /* already signed out */ }
+    setTokens(null);
+    showAuth();
+  });
+
+  $('entry-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const tags = $('tags').value.split(',').map((t) => t.trim()).filter(Boolean);
+    const response = await api('/journal', 'POST', { title: $('title').value, content: $('content').value, tags: tags });
+    if (!response.ok) { $('entry-error').textContent = await errorText(response); return; }
+    $('entry-error').textContent = '';
+    event.target.reset();
+    page = 0;
+    await loadEntries();
+  });
+
+  $('search-form').addEventListener('submit', (event) => { event.preventDefault(); page = 0; loadEntries(); });
+  $('prev').addEventListener('click', () => { page--; loadEntries(); });
+  $('next').addEventListener('click', () => { page++; loadEntries(); });
+
+  if (tokens) showApp().catch(() => {}); else showAuth();
+})();
+</script>
+</body>
+</html>

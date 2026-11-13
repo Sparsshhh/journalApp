@@ -1,86 +1,74 @@
 package net.engineeringdigest.journalApp.service;
 
-import lombok.extern.slf4j.Slf4j;
-import net.engineeringdigest.journalApp.entity.user;
+import net.engineeringdigest.journalApp.entity.User;
+import net.engineeringdigest.journalApp.repository.JournalEntryRepository;
+import net.engineeringdigest.journalApp.repository.RefreshTokenRepository;
 import net.engineeringdigest.journalApp.repository.UserRepository;
-import org.bson.types.ObjectId;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
-@Component
-@Slf4j
+@Service
 public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
+    public static final List<String> USER_ROLES = List.of("USER");
+    public static final List<String> ADMIN_ROLES = List.of("USER", "ADMIN");
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
+    private final JournalEntryRepository journalEntryRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordEncoder passwordEncoder;
 
-
-    public boolean saveNewEntry(user user) {
-        userRepository.save(newUserFrom(user, Arrays.asList("USER")));
-        return true;
+    public UserService(UserRepository userRepository, JournalEntryRepository journalEntryRepository,
+                       RefreshTokenRepository refreshTokenRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.journalEntryRepository = journalEntryRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
-
-    public void saveAdmin(user user) {
-        userRepository.save(newUserFrom(user, Arrays.asList("USER", "ADMIN")));
+    // Throws DuplicateKeyException (answered as 409) if the username is taken.
+    public User register(String userName, String rawPassword, List<String> roles) {
+        User user = new User(userName, passwordEncoder.encode(rawPassword));
+        user.setRoles(roles);
+        return userRepository.save(user);
     }
 
-    // Copies only userName and password from the request body. A client-supplied id would
-    // overwrite an existing account, and client-supplied journalEntries would expose other
-    // users' entries, so neither is carried over.
-    private user newUserFrom(user request, List<String> roles) {
-        user created = new user(request.getUserName(), passwordEncoder.encode(request.getPassword()));
-        created.setRoles(roles);
-        return created;
+    public User findByUserName(String userName) {
+        return userRepository.findByUserName(userName);
     }
 
-    // Changes the logged-in user's name and/or password; blank values keep the current one.
-    public void updateCredentials(String currentUserName, String newUserName, String newPassword) {
-        user userInDb = userRepository.findByUserName(currentUserName);
-        if (newUserName != null && !newUserName.trim().isEmpty()) {
-            userInDb.setUserName(newUserName);
-        }
-        if (newPassword != null && !newPassword.isEmpty()) {
-            userInDb.setPassword(passwordEncoder.encode(newPassword));
-        }
-        userRepository.save(userInDb);
-    }
-
-
-    public void saveUser(user user) {
-        userRepository.save(user);
-    }
-
-
-    public void saveNewUser(user user) {
-        userRepository.save(user);
-    }
-
-
-    public List<user> getAll() {
+    public List<User> getAll() {
         return userRepository.findAll();
     }
 
-
-    public Optional<user> findById(ObjectId id) {
-        return userRepository.findById(id);
+    // Changes the user's name and/or password; null or blank values keep the current one.
+    public void updateCredentials(User user, String newUserName, String newPassword) {
+        if (newUserName != null && !newUserName.trim().isEmpty()) {
+            user.setUserName(newUserName);
+        }
+        boolean passwordChanged = newPassword != null && !newPassword.isEmpty();
+        if (passwordChanged) {
+            user.setPassword(passwordEncoder.encode(newPassword));
+            user.setTokenVersion(user.getTokenVersion() + 1); // sign out everywhere
+        }
+        userRepository.save(user);
+        if (passwordChanged) {
+            refreshTokenRepository.deleteByUserId(user.getId());
+        }
     }
 
-
-    public void deleteById(ObjectId id) {
-        userRepository.deleteById(id);
+    // Invalidates every access and refresh token the user holds, on all devices.
+    public void logout(User user) {
+        user.setTokenVersion(user.getTokenVersion() + 1);
+        userRepository.save(user);
+        refreshTokenRepository.deleteByUserId(user.getId());
     }
 
-
-    public user findByUserName(String userName) {
-        return userRepository.findByUserName(userName);
+    public void deleteAccount(User user) {
+        journalEntryRepository.deleteByUserId(user.getId());
+        refreshTokenRepository.deleteByUserId(user.getId());
+        userRepository.deleteById(user.getId());
     }
 }
