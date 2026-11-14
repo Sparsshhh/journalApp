@@ -2,7 +2,7 @@ package net.engineeringdigest.journalApp.service;
 
 import lombok.extern.slf4j.Slf4j;
 import net.engineeringdigest.journalApp.entity.JournalEntry;
-import net.engineeringdigest.journalApp.entity.user;
+import net.engineeringdigest.journalApp.entity.User;
 import net.engineeringdigest.journalApp.repository.JournalEntryRepository;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
@@ -30,7 +30,7 @@ public class JournalEntryService {
     @Transactional
     public void saveEntry(JournalEntry journalEntry, String userName){
         try{
-            user user = userService.findByUserName(userName);
+            User user = userService.findByUserName(userName);
             journalEntry.setDate(LocalDateTime.now());
             JournalEntry saved = journalEntryRepository.save(journalEntry);
             user.getJournalEntries().add(saved);//in memory so call again
@@ -57,7 +57,7 @@ public class JournalEntryService {
     public boolean deleteById(ObjectId id, String userName){
         boolean removed = false;
         try {
-            user user = userService.findByUserName(userName);
+            User user = userService.findByUserName(userName);
             removed = user.getJournalEntries().removeIf(x -> x.getId().equals(id));
             if (removed) {
                 userService.saveUser(user);

@@ -1,7 +1,7 @@
 package net.engineeringdigest.journalApp.controller;
 
 import net.engineeringdigest.journalApp.entity.JournalEntry;
-import net.engineeringdigest.journalApp.entity.user;
+import net.engineeringdigest.journalApp.entity.User;
 import net.engineeringdigest.journalApp.service.JournalEntryService;
 import net.engineeringdigest.journalApp.service.UserService;
 import org.bson.types.ObjectId;
@@ -30,7 +30,7 @@ public class JournalEntryController {
     public ResponseEntity<?> getAllJournalEntriesOfUser(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
-        user user = userService.findByUserName(userName);
+        User user = userService.findByUserName(userName);
         List<JournalEntry> all = user.getJournalEntries();
         if(all !=null && !all.isEmpty()){
             return new ResponseEntity<>(all, HttpStatus.OK);
@@ -55,7 +55,7 @@ public class JournalEntryController {
     public ResponseEntity<JournalEntry> getJournalEntryById(@PathVariable ObjectId myId){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
-        user user = userService.findByUserName(userName);
+        User user = userService.findByUserName(userName);
         List<JournalEntry> collect = user.getJournalEntries().stream().filter(x -> x.getId().equals(myId)).collect(Collectors.toList());
         if(!collect.isEmpty()){
             Optional<JournalEntry> journalEntry =  journalEntryService.findById(myId);
@@ -82,7 +82,7 @@ public class JournalEntryController {
     public ResponseEntity<?> updateJournalById(@PathVariable ObjectId myId, @RequestBody JournalEntry newEntry){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
-        user user = userService.findByUserName(userName);
+        User user = userService.findByUserName(userName);
         List<JournalEntry> collect = user.getJournalEntries().stream().filter(x -> x.getId().equals(myId)).collect(Collectors.toList());
         if(!collect.isEmpty()){
             Optional<JournalEntry> journalEntry =  journalEntryService.findById(myId);

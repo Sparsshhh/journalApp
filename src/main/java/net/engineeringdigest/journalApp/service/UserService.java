@@ -1,7 +1,7 @@
 package net.engineeringdigest.journalApp.service;
 
 import lombok.extern.slf4j.Slf4j;
-import net.engineeringdigest.journalApp.entity.user;
+import net.engineeringdigest.journalApp.entity.User;
 import net.engineeringdigest.journalApp.repository.UserRepository;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +23,7 @@ public class UserService {
     private PasswordEncoder passwordEncoder;
 
 
-    public boolean saveNewEntry(user user) {
+    public boolean saveNewEntry(User user) {
         try {
             user.setPassword(passwordEncoder.encode(user.getPassword()));
             user.setRoles(Arrays.asList("USER"));
@@ -36,29 +36,29 @@ public class UserService {
     }
 
 
-    public void saveAdmin(user user) {
+    public void saveAdmin(User user) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setRoles(Arrays.asList("USER", "ADMIN"));
         userRepository.save(user);
     }
 
 
-    public void saveUser(user user) {
+    public void saveUser(User user) {
         userRepository.save(user);
     }
 
 
-    public void saveNewUser(user user) {
+    public void saveNewUser(User user) {
         userRepository.save(user);
     }
 
 
-    public List<user> getAll() {
+    public List<User> getAll() {
         return userRepository.findAll();
     }
 
 
-    public Optional<user> findById(ObjectId id) {
+    public Optional<User> findById(ObjectId id) {
         return userRepository.findById(id);
     }
 
@@ -68,7 +68,7 @@ public class UserService {
     }
 
 
-    public user findByUserName(String userName) {
+    public User findByUserName(String userName) {
         return userRepository.findByUserName(userName);
     }
 }

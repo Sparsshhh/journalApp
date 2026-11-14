@@ -1,6 +1,6 @@
 package net.engineeringdigest.journalApp.Service;
 
-import net.engineeringdigest.journalApp.entity.user;
+import net.engineeringdigest.journalApp.entity.User;
 import net.engineeringdigest.journalApp.repository.UserRepository;
 import net.engineeringdigest.journalApp.service.UserDetailsServiceImpl;
 import org.junit.jupiter.api.Assertions;
@@ -34,7 +34,7 @@ public class UserDetailsServiceImplTest {
     void loadUsernameTest() {
 
         // Create your own user entity
-        user myUser = new user("Sparsh", "Sparsh");
+        User myUser = new User("Sparsh", "Sparsh");
         myUser.setRoles(Arrays.asList("USER"));
 
         // Mock repository response

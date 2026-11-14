@@ -1,6 +1,6 @@
 package net.engineeringdigest.journalApp.service;
 
-import net.engineeringdigest.journalApp.entity.user;
+import net.engineeringdigest.journalApp.entity.User;
 import net.engineeringdigest.journalApp.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,7 +15,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        user user = userRepository.findByUserName(username);
+        User user = userRepository.findByUserName(username);
         if(user!=null){
             return org.springframework.security.core.userdetails.User.builder()
                     .username(user.getUserName())
