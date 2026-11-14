@@ -1,5 +1,5 @@
 # Build stage: compiles the app. Tests are run by CI, not here.
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:25-jdk AS build
 WORKDIR /build
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
@@ -8,7 +8,7 @@ COPY src src
 RUN sh ./mvnw -B -q package -DskipTests
 
 # Run stage: just a Java runtime and the jar, as a non-root user.
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 RUN useradd --system --create-home app
 USER app
 # The app writes journalApp.log into its working directory.

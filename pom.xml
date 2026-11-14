@@ -14,7 +14,7 @@
 	<name>Journal App</name>
 	<description>Journal app with entries encrypted at rest</description>
 	<properties>
-		<java.version>21</java.version>
+		<java.version>25</java.version>
 		<sonar.organization>sparsshhh</sonar.organization>
 		<jjwt.version>0.12.6</jjwt.version>
 	</properties>

@@ -2,7 +2,7 @@
 
 A personal journal with a REST API and a small web page. Each user has private entries that can be tagged, searched and paged through. Entry titles and content are encrypted before they are stored.
 
-Built with Java 21, Spring Boot 4, Spring Security and MongoDB.
+Built with Java 25, Spring Boot 4, Spring Security and MongoDB.
 
 ## Features
 
@@ -31,7 +31,7 @@ docker compose up --build
 
 ### Without Docker
 
-Needs JDK 21 and a MongoDB you can reach. Fill in `.env` as above, including `SPRING_MONGODB_URI`, then:
+Needs JDK 25 and a MongoDB you can reach. Fill in `.env` as above, including `SPRING_MONGODB_URI`, then:
 
 ```bash
 set -a; source .env; set +a; ./mvnw spring-boot:run
